@@ -8,7 +8,6 @@ from telebot import types
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-# ================== CONFIG ==================
 BOT_TOKEN = "6323882775:AAHtMktiweybyV00wDs2Did1nMmhSFdHDMI"
 API_KEY = "97fan9xef250tnsceje935zdqzsqbrs5"
 ADMIN_ID = 5983584180
@@ -30,7 +29,7 @@ def save_data():
         json.dump(users, f, indent=2, default=str)
 
 users = load_data()
-global_markup = True  # +1₹ enabled by default
+global_markup = True
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -83,7 +82,7 @@ def add_balance(msg):
         save_data()
         bot.send_message(msg.chat.id, f"✅ Added ₹{amount} to user {target_id}")
         try:
-            bot.send_message(int(target_id), f"💰 Admin added ₹{amount} to your balance!")
+            bot.send_message(int(target_id), f"💰 Admin added ₹{amount} to your balance!")   # Fixed: Now sends to user
         except:
             pass
     except:
@@ -96,21 +95,14 @@ def admin_stats(msg):
     total_balance = sum(u.get("balance", 0) for u in users.values())
     active_total = sum(len(u.get("activations", {})) for u in users.values())
 
-    text = f"📊 *Bot Stats*\n\n"
-    text += f"Total Users: `{total_users}`\n"
-    text += f"Total Balance: `₹{total_balance:.2f}`\n"
-    text += f"Active Numbers: `{active_total}`\n\n"
-
-    for uid, data in list(users.items()):
+    text = f"📊 *Bot Stats*\n\nUsers: {total_users}\nTotal Balance: ₹{total_balance:.2f}\nActive Numbers: {active_total}\n\n"
+    for uid, data in users.items():
         bal = data.get("balance", 0)
         acts = data.get("activations", {})
-        text += f"👤 User `{uid}`\n   Balance: `₹{bal:.2f}`\n"
-        if acts:
-            for act_id, act in acts.items():
-                remaining = max(0, int((act["expiry"] - datetime.now()).total_seconds() / 60))
-                text += f"   📱 {act.get('phone', 'N/A')} (ID: {act_id}) - {remaining} min\n"
-        text += "\n"
-
+        text += f"User {uid}: ₹{bal:.2f} | Active: {len(acts)}\n"
+        for act_id, act in acts.items():
+            remaining = max(0, int((act["expiry"] - datetime.now()).total_seconds() / 60))
+            text += f"   📱 {act.get('phone','N/A')} ({act_id}) - {remaining} min\n"
     bot.send_message(msg.chat.id, text, parse_mode="Markdown")
 
 # ===================== USER =====================
@@ -143,12 +135,7 @@ def my_account(msg):
 
 @bot.message_handler(func=lambda m: m.text in ["❓ Help", "help"])
 def help_cmd(msg):
-    bot.send_message(msg.chat.id, 
-        "❓ *Help*\n\n"
-        "• Search Service → Type service name\n"
-        "• Tap service to buy number\n"
-        "• Use Copy / Status / Cancel buttons\n\n"
-        "Developer: @Osamabinladennnnnn", parse_mode="Markdown")
+    bot.send_message(msg.chat.id, "❓ Help: Use Search Service button and type service name like jiomart, swiggy, blinkit, rapido.")
 
 # ===================== SEARCH =====================
 @bot.message_handler(func=lambda m: True)
@@ -175,7 +162,7 @@ def handle_message(msg):
         return
 
     bot.send_chat_action(msg.chat.id, 'typing')
-    bot.send_message(msg.chat.id, f"🔎 Searching for *{msg.text}*...")
+    bot.send_message(msg.chat.id, f"🔎 Searching for *{msg.text}*...\nPlease wait, fetching available servers...", parse_mode="Markdown")
 
     resp = api_request({'action': 'getServices', 'api_key': API_KEY, 'country': 'in'})
 
@@ -196,7 +183,7 @@ def handle_message(msg):
         pass
 
     if found > 0:
-        bot.send_message(msg.chat.id, f"✅ Found {found} services (+1₹ extra)", parse_mode="Markdown", reply_markup=markup)
+        bot.send_message(msg.chat.id, f"✅ Found {found} services for {msg.text}\n(+1₹ extra charge)", parse_mode="Markdown", reply_markup=markup)
     else:
         bot.send_message(msg.chat.id, "❌ No services found. Try `jiomart` or `swiggy`")
 
@@ -239,12 +226,7 @@ def callback_handler(call):
                 )
                 markup.add(types.InlineKeyboardButton("❌ Cancel Activation", callback_data=f"cancel_{act_id}"))
 
-                bot.send_message(int(user_id), 
-                    f"✅ *Number Purchased!*\n\n"
-                    f"📱 `{phone}`\n"
-                    f"🆔 `{act_id}`\n"
-                    f"⏳ 20 minutes left", 
-                    parse_mode="Markdown", reply_markup=markup)
+                bot.send_message(int(user_id), f"✅ Success\nNumber: `{phone}`\nID: `{act_id}`\n20 min left", parse_mode="Markdown", reply_markup=markup)
             except:
                 bot.send_message(int(user_id), f"`{resp}`", parse_mode="Markdown")
         else:
@@ -264,5 +246,5 @@ def callback_handler(call):
             del users[user_id]["activations"][act_id]
             save_data()
 
-print("✅ Heavy Version with All Fixes Started")
+print("✅ Bot Started with All Requested Fixes")
 bot.infinity_polling()
