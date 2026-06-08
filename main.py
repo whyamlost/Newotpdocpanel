@@ -63,10 +63,9 @@ def start(msg):
 
     # Clean welcome image
     try:
-        with open("start.png", "rb") as photo:
-            bot.send_photo(msg.chat.id, photo, 
-                          caption="✅ *Simp OTP Bot Started Successfully*\n\nProfessional • Persistent • Auto Status", 
-                          parse_mode="Markdown")
+        bot.send_photo(msg.chat.id, "https://i.postimg.cc/zB6S01g5/file-00000000ef1c71fd8fb6477fae06ddbb.png", 
+                      caption="✅ *Simp OTP Bot Started Successfully*\n\nProfessional • Persistent • Auto Status", 
+                      parse_mode="Markdown")
     except:
         pass
 
