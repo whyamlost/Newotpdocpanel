@@ -63,8 +63,10 @@ def start(msg):
 
     # Clean welcome image
     try:
-        bot.send_photo(msg.chat.id, "https://i.imgur.com/8Z2vK8j.jpg", 
-                      caption="✅ *Simp OTP Bot Started Successfully*", parse_mode="Markdown")
+        with open("start.png", "rb") as photo:
+            bot.send_photo(msg.chat.id, photo, 
+                          caption="✅ *Simp OTP Bot Started Successfully*\n\nProfessional • Persistent • Auto Status", 
+                          parse_mode="Markdown")
     except:
         pass
 
@@ -165,7 +167,7 @@ def auto_clicker(msg):
     user_id = str(msg.chat.id)
     if user_id not in users:
         users[user_id] = {"balance": 0.0, "activations": {}}
-    bot.send_message(msg.chat.id, "✅ *Auto Clicker Enabled* \nIt will automatically retry when buying numbers.")
+    bot.send_message(msg.chat.id, "✅ *Auto Clicker Enabled*\nIt will automatically retry when buying numbers.")
 
 # ===================== SEARCH =====================
 @bot.message_handler(func=lambda m: True)
