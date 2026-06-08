@@ -54,6 +54,7 @@ def is_admin(user_id):
     return user_id == ADMIN_ID
 
 # ===================== START =====================
+# ===================== START WITH IMAGE =====================
 @bot.message_handler(commands=['start'])
 def start(msg):
     user_id = str(msg.chat.id)
@@ -61,11 +62,13 @@ def start(msg):
         users[user_id] = {"balance": 0.0, "activations": {}}
     save_data()
 
+    # Your custom start image
     try:
         bot.send_photo(msg.chat.id, "https://i.postimg.cc/zB6S01g5/file-00000000ef1c71fd8fb6477fae06ddbt", 
-                      caption="✅ *Simp OTP Bot Started Successfully*", parse_mode="Markdown")
+                      caption="✅ *Simp OTP Bot Started Successfully*\n\nProfessional • Persistent • Auto Status", 
+                      parse_mode="Markdown")
     except:
-        pass
+        bot.send_message(msg.chat.id, "✅ *Simp OTP Bot Started Successfully*")
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add("🔍 Search Service", "💰 My Balance")
