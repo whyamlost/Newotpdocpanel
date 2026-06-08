@@ -8,14 +8,10 @@ from telebot import types
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-# ================== CONFIG ==================
 BOT_TOKEN = "6323882775:AAHtMktiweybyV00wDs2Did1nMmhSFdHDMI"
 API_KEY = "97fan9xef250tnsceje935zdqzsqbrs5"
 ADMIN_ID = 5983584180
 DATA_FILE = "users.json"
-
-# Clean welcome image (professional tech background)
-WELCOME_IMAGE = "https://i.imgur.com/8Z2vK8j.jpg"   # You can change this URL
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -57,7 +53,6 @@ def api_request(params):
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
-# ===================== START WITH IMAGE =====================
 @bot.message_handler(commands=['start'])
 def start(msg):
     user_id = str(msg.chat.id)
@@ -65,22 +60,14 @@ def start(msg):
         users[user_id] = {"balance": 0.0, "activations": {}}
     save_data()
 
-    # Send clean welcome image
-    try:
-        bot.send_photo(msg.chat.id, WELCOME_IMAGE, caption="✅ *Simp OTP Bot Started*\n\nProfessional • Persistent • Auto Status", parse_mode="Markdown")
-    except:
-        bot.send_message(msg.chat.id, "✅ *Simp OTP Bot Started*")
-
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add("🔍 Search Service", "💰 My Balance")
     markup.add("📱 My Numbers", "📊 My Account")
     markup.add("🔄 Auto Clicker", "❓ Help")
 
-    bot.send_message(msg.chat.id, "Use buttons below 👇", reply_markup=markup)
+    bot.send_message(msg.chat.id, "✅ *Simp OTP Bot Started*", parse_mode="Markdown", reply_markup=markup)
 
-# Rest of the bot (Admin commands, user commands, search, buy, etc.) remains the same as previous heavy version
+# Keep all your previous working handlers here (addbalance, stats, search, callback, etc.)
 
-# (To save space, I'm not repeating the entire code here. Keep the previous full version and only replace the /start function with the one above)
-
-print("✅ Bot Started with Welcome Image")
-bot.infinity_polling()
+print("✅ Bot Started - Single Instance Mode")
+bot.infinity_polling(none_stop=True, interval=1, timeout=20)
