@@ -165,7 +165,7 @@ def auto_clicker(msg):
     user_id = str(msg.chat.id)
     if user_id not in users:
         users[user_id] = {"balance": 0.0, "activations": {}}
-    bot.send_message(msg.chat.id, "✅ *Auto Clicker Enabled*\nIt will automatically retry when buying numbers.")
+    bot.send_message(msg.chat.id, "✅ *Auto Clicker Enabled* \nIt will automatically retry when buying numbers.")
 
 # ===================== SEARCH =====================
 @bot.message_handler(func=lambda m: True)
