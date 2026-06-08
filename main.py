@@ -53,7 +53,7 @@ def api_request(params):
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
-# ===================== START WITH IMAGE =====================
+# ===================== START =====================
 @bot.message_handler(commands=['start'])
 def start(msg):
     user_id = str(msg.chat.id)
@@ -61,11 +61,9 @@ def start(msg):
         users[user_id] = {"balance": 0.0, "activations": {}}
     save_data()
 
-    # Clean welcome image
     try:
-        bot.send_photo(msg.chat.id, "https://i.postimg.cc/zB6S01g5/file-00000000ef1c71fd8fb6477fae06ddbb.png", 
-                      caption="✅ *Simp OTP Bot Started Successfully*\n\nProfessional • Persistent • Auto Status", 
-                      parse_mode="Markdown")
+        bot.send_photo(msg.chat.id, "https://i.postimg.cc/zB6S01g5/file-00000000ef1c71fd8fb6477fae06ddbt", 
+                      caption="✅ *Simp OTP Bot Started Successfully*", parse_mode="Markdown")
     except:
         pass
 
@@ -175,6 +173,7 @@ def toggle_autoclicker(msg):
             "It will automatically retry when buying numbers.\n\n"
             "Send `/autoclicker off` to disable.", 
             parse_mode="Markdown")
+
 # ===================== SEARCH =====================
 @bot.message_handler(func=lambda m: True)
 def handle_message(msg):
@@ -200,7 +199,7 @@ def handle_message(msg):
         return
 
     if text == "🔄 auto clicker":
-        auto_clicker(msg)
+        toggle_autoclicker(msg)   # Fixed: Now calls correct function
         return
 
     if text == "❓ help":
@@ -292,5 +291,5 @@ def callback_handler(call):
             del users[user_id]["activations"][act_id]
             save_data()
 
-print("✅ Bot Updated with All Requested Fixes")
+print("✅ Bot Fixed & Running")
 bot.infinity_polling()
