@@ -168,11 +168,13 @@ def toggle_autoclicker(msg):
         users[user_id] = {"balance": 0.0, "activations": {}}
     
     if len(msg.text.split()) > 1 and msg.text.split()[1].lower() == "off":
-        # Disable logic (you can expand later)
         bot.send_message(msg.chat.id, "❌ **Auto Clicker Disabled**", parse_mode="Markdown")
     else:
-        bot.send_message(msg.chat.id, "✅ **Auto Clicker Enabled**\nIt will automatically retry when buying numbers.\n\nSend `/autoclicker off` to disable.", parse_mode="Markdown")
-
+        bot.send_message(msg.chat.id, 
+            "✅ **Auto Clicker Enabled**\n\n"
+            "It will automatically retry when buying numbers.\n\n"
+            "Send `/autoclicker off` to disable.", 
+            parse_mode="Markdown")
 # ===================== SEARCH =====================
 @bot.message_handler(func=lambda m: True)
 def handle_message(msg):
