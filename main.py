@@ -30,6 +30,7 @@ def save_data():
         json.dump(users, f, indent=2, default=str)
 
 users = load_data()
+global_markup = True  # Extra 1₹ enabled by default
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -58,7 +59,7 @@ def is_admin(user_id):
 def start(msg):
     user_id = str(msg.chat.id)
     if user_id not in users:
-        users[user_id] = {"balance": 0.0, "activations": {}, "auto_clicker": False}
+        users[user_id] = {"balance": 0.0, "activations": {}}
     save_data()
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
@@ -66,63 +67,50 @@ def start(msg):
     markup.add("📱 My Numbers", "📊 My Account")
     markup.add("🔄 Auto Clicker", "❓ Help")
 
-    bot.send_message(msg.chat.id, 
-        "✅ *Simp OTP Bot Started*\n\n"
-        "Persistent • Professional • All Features Working", 
-        parse_mode="Markdown", reply_markup=markup)
+    bot.send_message(msg.chat.id, "✅ *Simp OTP Bot Started*", parse_mode="Markdown", reply_markup=markup)
 
 # ===================== ADMIN COMMANDS =====================
 @bot.message_handler(commands=['addbalance'])
 def add_balance(msg):
-    if not is_admin(msg.chat.id):
-        return
+    if not is_admin(msg.chat.id): return
     try:
         _, target_id, amount = msg.text.split()
         target_id = str(target_id)
         amount = float(amount)
         if target_id not in users:
-            users[target_id] = {"balance": 0.0, "activations": {}, "auto_clicker": False}
+            users[target_id] = {"balance": 0.0, "activations": {}}
         users[target_id]["balance"] += amount
         save_data()
         bot.send_message(msg.chat.id, f"✅ Added ₹{amount} to user {target_id}")
-        try:
-            bot.send_message(int(target_id), f"💰 Admin added ₹{amount} to your balance!")
-        except:
-            pass
     except:
         bot.send_message(msg.chat.id, "Usage: `/addbalance <user_id> <amount>`")
 
+@bot.message_handler(commands=['freemode'])
+def freemode(msg):
+    if not is_admin(msg.chat.id): return
+    global global_markup
+    try:
+        _, state = msg.text.split()
+        global_markup = state.lower() == "on"
+        status = "Enabled (+1₹)" if global_markup else "Disabled (Free for everyone)"
+        bot.send_message(msg.chat.id, f"✅ Markup is now {status}")
+    except:
+        bot.send_message(msg.chat.id, "Usage: `/freemode on` or `/freemode off`")
+
 @bot.message_handler(commands=['stats'])
 def admin_stats(msg):
-    if not is_admin(msg.chat.id):
-        return
+    if not is_admin(msg.chat.id): return
     total_users = len(users)
     total_balance = sum(u.get("balance", 0) for u in users.values())
-    active_numbers = sum(len(u.get("activations", {})) for u in users.values())
-
-    text = f"📊 *Bot Stats*\n\n"
-    text += f"Total Users: `{total_users}`\n"
-    text += f"Total Balance: `₹{total_balance:.2f}`\n"
-    text += f"Active Numbers: `{active_numbers}`\n\n"
-
-    for uid, data in users.items():
-        bal = data.get("balance", 0)
-        acts = data.get("activations", {})
-        text += f"👤 User `{uid}`\n"
-        text += f"   Balance: `₹{bal:.2f}`\n"
-        if acts:
-            for act_id, act_data in acts.items():
-                text += f"   📱 {act_data.get('phone', 'N/A')} (ID: {act_id})\n"
-        text += "\n"
-
-    bot.send_message(msg.chat.id, text, parse_mode="Markdown")
+    active = sum(len(u.get("activations", {})) for u in users.values())
+    bot.send_message(msg.chat.id, f"📊 *Stats*\nUsers: {total_users}\nTotal Balance: ₹{total_balance:.2f}\nActive Numbers: {active}", parse_mode="Markdown")
 
 # ===================== USER COMMANDS =====================
 @bot.message_handler(func=lambda m: m.text in ["💰 My Balance", "my balance"])
 def my_balance(msg):
     user_id = str(msg.chat.id)
     if user_id not in users:
-        users[user_id] = {"balance": 0.0, "activations": {}, "auto_clicker": False}
+        users[user_id] = {"balance": 0.0, "activations": {}}
     bal = users[user_id]["balance"]
     bot.send_message(msg.chat.id, f"💰 *Your Balance*\n`₹{bal:.2f}`", parse_mode="Markdown")
 
@@ -130,51 +118,40 @@ def my_balance(msg):
 def my_numbers(msg):
     user_id = str(msg.chat.id)
     if user_id not in users or not users[user_id]["activations"]:
-        bot.send_message(msg.chat.id, "❌ No active numbers right now.")
+        bot.send_message(msg.chat.id, "❌ No active numbers.")
         return
     for act_id, data in users[user_id]["activations"].items():
         remaining = max(0, int((data["expiry"] - datetime.now()).total_seconds() / 60))
-        bot.send_message(msg.chat.id, f"📱 `{data['phone']}`\n🆔 `{act_id}`\n⏳ {remaining} minutes left", parse_mode="Markdown")
+        bot.send_message(msg.chat.id, f"📱 `{data['phone']}`\n🆔 `{act_id}`\n⏳ {remaining} min left", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.text in ["📊 My Account", "my account"])
 def my_account(msg):
     user_id = str(msg.chat.id)
     if user_id not in users:
-        users[user_id] = {"balance": 0.0, "activations": {}, "auto_clicker": False}
+        users[user_id] = {"balance": 0.0, "activations": {}}
     bal = users[user_id]["balance"]
     active = len(users[user_id]["activations"])
-    bot.send_message(msg.chat.id, f"📊 *Your Account Dashboard*\n\nBalance: `₹{bal:.2f}`\nActive Numbers: `{active}`", parse_mode="Markdown")
+    bot.send_message(msg.chat.id, f"📊 *Account Dashboard*\nBalance: `₹{bal:.2f}`\nActive Numbers: `{active}`", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda m: m.text in ["❓ Help", "help"])
 def help_cmd(msg):
     bot.send_message(msg.chat.id, 
-        "❓ *How to use Simp OTP Bot*\n\n"
-        "1. Tap **🔍 Search Service**\n"
-        "2. Type service name (jiomart, swiggy, blinkit, rapido)\n"
-        "3. Tap any service button to buy\n"
-        "4. Use **Copy Number**, **Check Status**, **Cancel Activation**\n\n"
-        "💡 Tip: Enable **🔄 Auto Clicker** for automatic retry if no number is available.\n\n"
-        "For any issue, message the developer: @Osamabinladennnnnn", parse_mode="Markdown")
+        "❓ *Help*\n\n"
+        "1. Search Service → Type service name\n"
+        "2. Tap any service to buy\n"
+        "3. Use Copy / Status / Cancel\n\n"
+        "Developer: @Osamabinladennnnnn", parse_mode="Markdown")
 
-@bot.message_handler(func=lambda m: m.text in ["🔄 Auto Clicker", "auto clicker"])
-def enable_auto_clicker(msg):
-    user_id = str(msg.chat.id)
-    if user_id not in users:
-        users[user_id] = {"balance": 0.0, "activations": {}, "auto_clicker": False}
-    users[user_id]["auto_clicker"] = True
-    save_data()
-    bot.send_message(msg.chat.id, "✅ *Auto Clicker Enabled!*\n\nNext time you buy a number, it will automatically retry up to 12 times if no number is available.", parse_mode="Markdown")
-
-# ===================== SEARCH + BUY =====================
+# ===================== SEARCH =====================
 @bot.message_handler(func=lambda m: True)
 def handle_message(msg):
     text = msg.text.strip().lower()
     user_id = str(msg.chat.id)
     if user_id not in users:
-        users[user_id] = {"balance": 0.0, "activations": {}, "auto_clicker": False}
+        users[user_id] = {"balance": 0.0, "activations": {}}
 
     if text in ["🔍 search service", "search"]:
-        bot.send_message(msg.chat.id, "Send service name like: `jiomart`, `swiggy`, `blinkit`, `rapido`, `flipkart`")
+        bot.send_message(msg.chat.id, "Send service name like: jiomart, swiggy, blinkit, rapido")
         return
 
     if text == "💰 my balance":
@@ -189,17 +166,8 @@ def handle_message(msg):
         my_account(msg)
         return
 
-    if text == "🔄 auto clicker":
-        enable_auto_clicker(msg)
-        return
-
-    if text == "❓ help":
-        help_cmd(msg)
-        return
-
-    # Normal Search
     bot.send_chat_action(msg.chat.id, 'typing')
-    bot.send_message(msg.chat.id, f"🔎 Searching for *{msg.text}*...")
+    bot.send_message(msg.chat.id, f"🔎 Searching *{msg.text}*...")
 
     resp = api_request({'action': 'getServices', 'api_key': API_KEY, 'country': 'in'})
 
@@ -212,18 +180,19 @@ def handle_message(msg):
             name = info.get("service_name", "").lower()
             if term in name or term in str(sid):
                 price = float(info.get("service_price", 0))
-                markup.add(types.InlineKeyboardButton(f"✅ {sid} | {info.get('service_name')} ₹{price+1}", callback_data=f"svc_{sid}"))
+                final_price = price + 1 if global_markup else price
+                markup.add(types.InlineKeyboardButton(f"✅ {sid} | {info.get('service_name')} ₹{final_price}", callback_data=f"svc_{sid}"))
                 found += 1
                 if found >= 20: break
     except:
         pass
 
     if found > 0:
-        bot.send_message(msg.chat.id, f"✅ Found {found} services (+1₹ charge)", parse_mode="Markdown", reply_markup=markup)
+        bot.send_message(msg.chat.id, f"✅ Found {found} services", parse_mode="Markdown", reply_markup=markup)
     else:
         bot.send_message(msg.chat.id, "❌ No services found. Try `jiomart` or `swiggy`")
 
-# ===================== CALLBACKS =====================
+# ===================== BUY =====================
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     user_id = str(call.message.chat.id)
@@ -234,17 +203,12 @@ def callback_handler(call):
 
         if not is_admin(int(user_id)):
             if users[user_id]["balance"] < 11:
-                bot.send_message(int(user_id), "❌ Insufficient balance. Ask admin to add funds.")
+                bot.send_message(int(user_id), "❌ Insufficient balance.")
                 return
 
         bot.send_chat_action(int(user_id), 'typing')
 
-        # Auto Retry (always on now, or respect flag)
-        for attempt in range(1, 13):
-            resp = api_request({'action': 'getNumber', 'api_key': API_KEY, 'service': service_id, 'country': 'in'})
-            if "ACCESS_NUMBER" in resp:
-                break
-            time.sleep(3 + attempt)
+        resp = api_request({'action': 'getNumber', 'api_key': API_KEY, 'service': service_id, 'country': 'in'})
 
         if "ACCESS_NUMBER" in resp:
             try:
@@ -256,7 +220,7 @@ def callback_handler(call):
                 users[user_id]["activations"][act_id] = {"phone": phone, "expiry": expiry}
 
                 if not is_admin(int(user_id)):
-                    users[user_id]["balance"] -= 11
+                    users[user_id]["balance"] -= 11 if global_markup else 0
 
                 save_data()
 
@@ -267,12 +231,7 @@ def callback_handler(call):
                 )
                 markup.add(types.InlineKeyboardButton("❌ Cancel Activation", callback_data=f"cancel_{act_id}"))
 
-                bot.send_message(int(user_id), 
-                    f"✅ *Number Purchased Successfully!*\n\n"
-                    f"📱 Number: `{phone}`\n"
-                    f"🆔 ID: `{act_id}`\n"
-                    f"⏳ Expires in: 20 minutes", 
-                    parse_mode="Markdown", reply_markup=markup)
+                bot.send_message(int(user_id), f"✅ Success\n📱 `{phone}`\n🆔 `{act_id}`\n⏳ 20 min", parse_mode="Markdown", reply_markup=markup)
             except:
                 bot.send_message(int(user_id), f"`{resp}`", parse_mode="Markdown")
         else:
@@ -283,14 +242,14 @@ def callback_handler(call):
     elif call.data.startswith("status_"):
         act_id = call.data.split("_")[1]
         resp = api_request({'action': 'getStatus', 'api_key': API_KEY, 'id': act_id})
-        bot.send_message(int(user_id), f"📌 *Status:*\n`{resp}`", parse_mode="Markdown")
+        bot.send_message(int(user_id), f"📌 Status:\n`{resp}`", parse_mode="Markdown")
     elif call.data.startswith("cancel_"):
         act_id = call.data.split("_")[1]
         resp = api_request({'action': 'setStatus', 'api_key': API_KEY, 'id': act_id, 'status': 8})
-        bot.send_message(int(user_id), f"❌ *Cancelled:*\n`{resp}`", parse_mode="Markdown")
+        bot.send_message(int(user_id), f"❌ Cancelled:\n`{resp}`", parse_mode="Markdown")
         if user_id in users and act_id in users[user_id]["activations"]:
             del users[user_id]["activations"][act_id]
             save_data()
 
-print("✅ Full Persistent Professional Version Started")
+print("✅ Heavy Version with Markup Control Started")
 bot.infinity_polling()
