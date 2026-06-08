@@ -4,6 +4,8 @@ import time
 import json
 from datetime import datetime, timedelta
 from telebot import types
+from threading import Thread
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 BOT_TOKEN = "6323882775:AAHtMktiweybyV00wDs2Did1nMmhSFdHDMI"
 API_KEY = "97fan9xef250tnsceje935zdqzsqbrs5"
@@ -11,6 +13,18 @@ ADMIN_ID = 5983584180
 
 bot = telebot.TeleBot(BOT_TOKEN)
 users = {}
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/health":
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"OK")
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+Thread(target=lambda: HTTPServer(("0.0.0.0", 8080), HealthHandler).serve_forever(), daemon=True).start()
 
 def api_request(params):
     try:
@@ -27,9 +41,10 @@ def start(msg):
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add("🔍 Search Service", "💰 My Balance")
-    markup.add("📱 My Numbers")
+    markup.add("📱 My Numbers", "🔄 Auto Clicker")
+    markup.add("📊 Stats", "❓ Help")
 
-    bot.send_message(msg.chat.id, "✅ *Simp OTP Bot Started*\nPublic Bot • +1₹ Charge", parse_mode="Markdown", reply_markup=markup)
+    bot.send_message(msg.chat.id, "✅ *Simp OTP Bot Started*\nHeavy Version • All Commands • Auto Retry", parse_mode="Markdown", reply_markup=markup)
 
 @bot.message_handler(commands=['addbalance'])
 def add_balance(msg):
@@ -53,7 +68,7 @@ def handle_message(msg):
         users[user_id] = {"balance": 0.0, "activations": {}}
 
     if text in ["🔍 search service", "search"]:
-        bot.send_message(user_id, "Send service name like: jiomart, swiggy, blinkit")
+        bot.send_message(user_id, "Send service name (jiomart, swiggy, blinkit, rapido)")
         return
 
     if text == "💰 my balance":
@@ -62,13 +77,102 @@ def handle_message(msg):
         return
 
     if text == "📱 my numbers":
-        bot.send_message(user_id, "No active numbers yet.")
+        if not users[user_id]["activations"]:
+            bot.send_message(user_id, "❌ No active numbers.")
+            return
+        for act_id, data in users[user_id]["activations"].items():
+            remaining = max(0, int((data["expiry"] - datetime.now()).total_seconds() / 60))
+            bot.send_message(user_id, f"📱 `{data['phone']}`\n🆔 `{act_id}`\n⏳ {remaining} min", parse_mode="Markdown")
         return
 
-    bot.send_message(user_id, f"🔎 Searching {msg.text}...")
-    time.sleep(2)
-    resp = api_request({'action': 'getNumber', 'api_key': API_KEY, 'service': '12531', 'country': 'in'})
-    bot.send_message(user_id, f"📲 Result:\n{resp}")
+    if text == "🔄 auto clicker":
+        bot.send_message(user_id, "🔄 Auto Clicker enabled for next purchase.")
+        return
 
-print("✅ Bot Started")
+    if text == "📊 stats":
+        bal = users[user_id]["balance"]
+        active = len(users[user_id]["activations"])
+        bot.send_message(user_id, f"📊 Stats\nBalance: ₹{bal:.2f}\nActive: {active}")
+        return
+
+    if text == "❓ help":
+        bot.send_message(user_id, "Use Search Service button and type service name.")
+        return
+
+    # Search
+    bot.send_chat_action(user_id, 'typing')
+    bot.send_message(user_id, f"🔎 Searching {msg.text}...")
+
+    resp = api_request({'action': 'getServices', 'api_key': API_KEY, 'country': 'in'})
+
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    found = 0
+    try:
+        services = json.loads(resp)
+        for sid, info in services.items():
+            name = info.get("service_name", "").lower()
+            if text in name or text in str(sid):
+                price = float(info.get("service_price", 0))
+                markup.add(types.InlineKeyboardButton(f"🆔 {sid} | {info.get('service_name')} ₹{price+1}", callback_data=f"svc_{sid}"))
+                found += 1
+                if found >= 15: break
+    except:
+        pass
+
+    if found > 0:
+        bot.send_message(user_id, f"✅ Found {found} services", parse_mode="Markdown", reply_markup=markup)
+    else:
+        bot.send_message(user_id, "❌ No services found.")
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_handler(call):
+    user_id = call.message.chat.id
+    bot.answer_callback_query(call.id)
+
+    if call.data.startswith("svc_"):
+        service_id = call.data.split("_")[1]
+        bot.send_chat_action(user_id, 'typing')
+
+        for attempt in range(1, 13):
+            resp = api_request({'action': 'getNumber', 'api_key': API_KEY, 'service': service_id, 'country': 'in'})
+            if "ACCESS_NUMBER" in resp:
+                break
+            time.sleep(3 + attempt)
+
+        if "ACCESS_NUMBER" in resp:
+            try:
+                parts = resp.split(':')
+                act_id = parts[1]
+                phone = parts[2] if len(parts) > 2 else "N/A"
+
+                expiry = datetime.now() + timedelta(minutes=20)
+                users[user_id]["activations"][act_id] = {"phone": phone, "expiry": expiry}
+
+                markup = types.InlineKeyboardMarkup(row_width=2)
+                markup.add(
+                    types.InlineKeyboardButton("📋 Copy", callback_data=f"copy_{phone}"),
+                    types.InlineKeyboardButton("🔄 Status", callback_data=f"status_{act_id}")
+                )
+                markup.add(types.InlineKeyboardButton("❌ Cancel", callback_data=f"cancel_{act_id}"))
+
+                bot.send_message(user_id, f"✅ Success\n📱 `{phone}`\n🆔 `{act_id}`\n⏳ 20 min", parse_mode="Markdown", reply_markup=markup)
+            except:
+                bot.send_message(user_id, f"`{resp}`", parse_mode="Markdown")
+        else:
+            bot.send_message(user_id, f"`{resp}`", parse_mode="Markdown")
+
+    elif call.data.startswith("copy_"):
+        bot.send_message(user_id, f"`{call.data.split('_',1)[1]}`", parse_mode="Markdown")
+    elif call.data.startswith("status_"):
+        act_id = call.data.split("_")[1]
+        resp = api_request({'action': 'getStatus', 'api_key': API_KEY, 'id': act_id})
+        bot.send_message(user_id, f"📌 Status:\n`{resp}`", parse_mode="Markdown")
+    elif call.data.startswith("cancel_"):
+        act_id = call.data.split("_")[1]
+        resp = api_request({'action': 'setStatus', 'api_key': API_KEY, 'id': act_id, 'status': 8})
+        bot.send_message(user_id, f"❌ Cancelled:\n`{resp}`", parse_mode="Markdown")
+        if user_id in users and act_id in users[user_id]["activations"]:
+            del users[user_id]["activations"][act_id]
+
+print("✅ Heavy Version Started")
 bot.infinity_polling()
