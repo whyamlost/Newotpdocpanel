@@ -161,12 +161,17 @@ def help_cmd(msg):
         "🔄 Auto Clicker: Enable for automatic retry\n\n"
         "Developer: @Osamabinladennnnnn", parse_mode="Markdown")
 
-@bot.message_handler(func=lambda m: m.text in ["🔄 Auto Clicker", "auto clicker"])
-def auto_clicker(msg):
+@bot.message_handler(commands=['autoclicker'])
+def toggle_autoclicker(msg):
     user_id = str(msg.chat.id)
     if user_id not in users:
         users[user_id] = {"balance": 0.0, "activations": {}}
-    bot.send_message(msg.chat.id, "✅ *Auto Clicker Enabled*\nIt will automatically retry when buying numbers.")
+    
+    if len(msg.text.split()) > 1 and msg.text.split()[1].lower() == "off":
+        # Disable logic (you can expand later)
+        bot.send_message(msg.chat.id, "❌ **Auto Clicker Disabled**", parse_mode="Markdown")
+    else:
+        bot.send_message(msg.chat.id, "✅ **Auto Clicker Enabled**\nIt will automatically retry when buying numbers.\n\nSend `/autoclicker off` to disable.", parse_mode="Markdown")
 
 # ===================== SEARCH =====================
 @bot.message_handler(func=lambda m: True)
