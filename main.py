@@ -53,7 +53,6 @@ def api_request(params):
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
-# ===================== START =====================
 # ===================== START WITH IMAGE =====================
 @bot.message_handler(commands=['start'])
 def start(msg):
@@ -62,13 +61,11 @@ def start(msg):
         users[user_id] = {"balance": 0.0, "activations": {}}
     save_data()
 
-    # Your custom start image
     try:
         bot.send_photo(msg.chat.id, "https://i.postimg.cc/zB6S01g5/file-00000000ef1c71fd8fb6477fae06ddbt", 
-                      caption="✅ *Simp OTP Bot Started Successfully*\n\nProfessional • Persistent • Auto Status", 
-                      parse_mode="Markdown")
+                      caption="✅ *Simp OTP Bot Started Successfully*", parse_mode="Markdown")
     except:
-        bot.send_message(msg.chat.id, "✅ *Simp OTP Bot Started Successfully*")
+        pass
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add("🔍 Search Service", "💰 My Balance")
@@ -202,7 +199,7 @@ def handle_message(msg):
         return
 
     if text == "🔄 auto clicker":
-        toggle_autoclicker(msg)   # Fixed: Now calls correct function
+        toggle_autoclicker(msg)   # FIXED
         return
 
     if text == "❓ help":
@@ -294,5 +291,5 @@ def callback_handler(call):
             del users[user_id]["activations"][act_id]
             save_data()
 
-print("✅ Bot Fixed & Running")
+print("✅ Bot Fixed")
 bot.infinity_polling()
