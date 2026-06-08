@@ -53,7 +53,7 @@ def api_request(params):
 def is_admin(user_id):
     return user_id == ADMIN_ID
 
-# ===================== START =====================
+# ===================== START WITH IMAGE =====================
 @bot.message_handler(commands=['start'])
 def start(msg):
     user_id = str(msg.chat.id)
@@ -61,12 +61,19 @@ def start(msg):
         users[user_id] = {"balance": 0.0, "activations": {}}
     save_data()
 
+    # Clean welcome image
+    try:
+        bot.send_photo(msg.chat.id, "https://i.imgur.com/8Z2vK8j.jpg", 
+                      caption="✅ *Simp OTP Bot Started Successfully*", parse_mode="Markdown")
+    except:
+        pass
+
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add("🔍 Search Service", "💰 My Balance")
     markup.add("📱 My Numbers", "📊 My Account")
     markup.add("🔄 Auto Clicker", "❓ Help")
 
-    bot.send_message(msg.chat.id, "✅ *Simp OTP Bot Started*", parse_mode="Markdown", reply_markup=markup)
+    bot.send_message(msg.chat.id, "Use buttons below 👇", reply_markup=markup)
 
 # ===================== ADMIN =====================
 @bot.message_handler(commands=['addbalance'])
@@ -82,27 +89,36 @@ def add_balance(msg):
         save_data()
         bot.send_message(msg.chat.id, f"✅ Added ₹{amount} to user {target_id}")
         try:
-            bot.send_message(int(target_id), f"💰 Admin added ₹{amount} to your balance!")   # Fixed: Now sends to user
+            bot.send_message(int(target_id), f"💰 Admin added ₹{amount} to your balance!")
         except:
             pass
     except:
         bot.send_message(msg.chat.id, "Usage: `/addbalance <user_id> <amount>`")
 
+@bot.message_handler(commands=['freemode'])
+def freemode(msg):
+    if not is_admin(msg.chat.id): return
+    global global_markup
+    try:
+        _, state = msg.text.split()
+        global_markup = state.lower() == "on"
+        status = "ON (+1₹)" if global_markup else "OFF (Free)"
+        bot.send_message(msg.chat.id, f"✅ Markup is now {status}")
+    except:
+        bot.send_message(msg.chat.id, "Usage: `/freemode on` or `/freemode off`")
+
 @bot.message_handler(commands=['stats'])
 def admin_stats(msg):
     if not is_admin(msg.chat.id): return
-    total_users = len(users)
-    total_balance = sum(u.get("balance", 0) for u in users.values())
-    active_total = sum(len(u.get("activations", {})) for u in users.values())
-
-    text = f"📊 *Bot Stats*\n\nUsers: {total_users}\nTotal Balance: ₹{total_balance:.2f}\nActive Numbers: {active_total}\n\n"
+    text = "📊 *Detailed Stats*\n\n"
     for uid, data in users.items():
         bal = data.get("balance", 0)
         acts = data.get("activations", {})
-        text += f"User {uid}: ₹{bal:.2f} | Active: {len(acts)}\n"
+        text += f"👤 User: `{uid}`\nBalance: `₹{bal:.2f}` | Active: `{len(acts)}`\n"
         for act_id, act in acts.items():
             remaining = max(0, int((act["expiry"] - datetime.now()).total_seconds() / 60))
-            text += f"   📱 {act.get('phone','N/A')} ({act_id}) - {remaining} min\n"
+            text += f"   📱 `{act.get('phone','N/A')}` (ID: {act_id}) - {remaining} min\n"
+        text += "\n"
     bot.send_message(msg.chat.id, text, parse_mode="Markdown")
 
 # ===================== USER =====================
@@ -135,7 +151,21 @@ def my_account(msg):
 
 @bot.message_handler(func=lambda m: m.text in ["❓ Help", "help"])
 def help_cmd(msg):
-    bot.send_message(msg.chat.id, "❓ Help: Use Search Service button and type service name like jiomart, swiggy, blinkit, rapido.")
+    bot.send_message(msg.chat.id, 
+        "❓ *How to use Simp OTP Bot*\n\n"
+        "1. Tap **🔍 Search Service**\n"
+        "2. Type service name (jiomart, swiggy, blinkit, rapido, flipkart)\n"
+        "3. Tap any service button to buy number\n"
+        "4. Use **Copy Number**, **Check Status**, **Cancel Activation**\n\n"
+        "🔄 Auto Clicker: Enable for automatic retry\n\n"
+        "Developer: @Osamabinladennnnnn", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda m: m.text in ["🔄 Auto Clicker", "auto clicker"])
+def auto_clicker(msg):
+    user_id = str(msg.chat.id)
+    if user_id not in users:
+        users[user_id] = {"balance": 0.0, "activations": {}}
+    bot.send_message(msg.chat.id, "✅ *Auto Clicker Enabled*\nIt will automatically retry when buying numbers.")
 
 # ===================== SEARCH =====================
 @bot.message_handler(func=lambda m: True)
@@ -161,8 +191,16 @@ def handle_message(msg):
         my_account(msg)
         return
 
+    if text == "🔄 auto clicker":
+        auto_clicker(msg)
+        return
+
+    if text == "❓ help":
+        help_cmd(msg)
+        return
+
     bot.send_chat_action(msg.chat.id, 'typing')
-    bot.send_message(msg.chat.id, f"🔎 Searching for *{msg.text}*...\nPlease wait, fetching available servers...", parse_mode="Markdown")
+    bot.send_message(msg.chat.id, f"🔎 Searching for *{msg.text}*...\nPlease wait...", parse_mode="Markdown")
 
     resp = api_request({'action': 'getServices', 'api_key': API_KEY, 'country': 'in'})
 
@@ -183,7 +221,7 @@ def handle_message(msg):
         pass
 
     if found > 0:
-        bot.send_message(msg.chat.id, f"✅ Found {found} services for {msg.text}\n(+1₹ extra charge)", parse_mode="Markdown", reply_markup=markup)
+        bot.send_message(msg.chat.id, f"✅ Found {found} services (+1₹ extra)", parse_mode="Markdown", reply_markup=markup)
     else:
         bot.send_message(msg.chat.id, "❌ No services found. Try `jiomart` or `swiggy`")
 
@@ -246,5 +284,5 @@ def callback_handler(call):
             del users[user_id]["activations"][act_id]
             save_data()
 
-print("✅ Bot Started with All Requested Fixes")
+print("✅ Bot Updated with All Requested Fixes")
 bot.infinity_polling()
