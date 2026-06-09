@@ -78,7 +78,7 @@ def start(msg):
         "✅ Professional Service\n"
         "✅ Persistent Balance\n"
         "✅ Auto Status Checking\n"
-        "✅ +1₹ Service Charge\n\n"
+    
         "Use the menu below to get started 👇"
     )
 
